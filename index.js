@@ -10,6 +10,7 @@ var Paramap = require('pull-paramap')
 var ltgt = require('ltgt')
 var explain = require('explain-error')
 var mkdirp = require('mkdirp')
+var array_diff = require('./array_diff')
 
 module.exports = function (version, map) {
   return function (log, name) {
@@ -62,36 +63,58 @@ module.exports = function (version, map) {
         }
       })
     })
-
+    var batch
     return {
       since: since,
       methods: { get: 'async', read: 'source'},
       createSink: function (cb) {
-       return writer = Write(function (batch, cb) {
+       return writer = Write(function (chunks, cb) {
           if(closed) return cb(new Error('database closed while index was building'))
-          db.batch(batch, function (err) {
+          var newSince = chunks[0].value.since
+          console.log('Writing chunks:', chunks)
+          db.batch(chunks, function (err) {
             if(err) return cb(err)
-            since.set(batch[0].value.since)
+            console.log('done writing chunks, since=', newSince)
+            since.set(newSince)
             //callback to anyone waiting for this point.
             cb()
           })
-        }, function reduce (batch, data) {
-          if(data.sync) return batch
-          var seq = data.seq
+        }, function reduce (chunks, data) {
+          //if(data.sync) return batch
+          if(data.since !== undefined) {
+            console.log('review-level got data.since', data.since, 'batch length', batch && batch.length)
+            if (batch) {
+              if (data.since > batch[0].value.since) {
+                batch[0].value.since = data.since
+                var ret =(chunks || []).concat(batch)
+                ret[0].value.since = data.since
+                batch = null
+                return ret
+              }
+            } 
+          }
 
           if(!batch)
             batch = [{
               key: META,
-              value: {version: version, since: seq},
-              valueEncoding: 'json', keyEncoding:'utf8', type: 'put'
+              value: {version: version, since: data.since !== undefined ? data.since : -1},
+              valueEncoding: 'json', keyEncoding:'utf8'
             }]
 
-          //map must return an array (like flatmap) with zero or more values
-          var indexed = map(data.value, data.seq)
-          batch = batch.concat(indexed.map(function (key) { return { key: key, value: seq, type: 'put' }}))
-          batch[0].value.since = Math.max(batch[0].value.since, seq)
-          return batch
-        }, 512, cb)
+          if (data.since == undefined) {
+            //map must return an array (like flatmap) with zero or more values
+            var new_entries = map(data.value, data.value.seq)
+            var old_entries = data.old_value ? map(data.old_value, data.old_value.seq) : []
+            var diff = array_diff(old_entries, new_entries)
+            batch = batch.concat(diff.put.map(function (key) {
+              return { key: key, value: data.value.seq, type: 'put' }
+            }))
+            batch = batch.concat(diff.del.map(function (key) {
+              return { key: key, type: 'del' }
+            }))
+          }
+          return chunks
+        }, 512, cb) // TODO: newver write if we dont tell you to
       },
 
       get: function (key, cb) {
@@ -132,8 +155,8 @@ module.exports = function (version, map) {
             //this is an ugly hack! ); but it stops the index metadata appearing in the live stream
             return op.key !== META
           }),
-          values
-          ? Paramap(function (data, cb) {
+          values ?
+          Paramap(function (data, cb) {
               if(data.sync) return cb(null, data)
               log.get(data.value, function (err, value) {
                 if(err) cb(explain(err, 'when trying to retrive:'+data.key+'at since:'+log.since.value))
@@ -147,7 +170,6 @@ module.exports = function (version, map) {
       },
       close: close,
       destroy: destroy
-      //put, del, batch - leave these out for now, since the indexes just map.
     }
   }
 }
