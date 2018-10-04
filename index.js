@@ -141,14 +141,16 @@ module.exports = function (version, map) {
         var lower = ltgt.lowerBound(opts)
         if(lower == null) opts.gt = null
 
-        function format (key, seq, value) {
-          return (
+        function format (key, seq, value, type) {
+          var ret = (
             keys && values && seqs ? {key: key, seq: seq, value: value}
           : keys && values         ? {key: key, value: value}
           : keys && seqs           ? {key: key, seq: seq}
           : seqs && values         ? {seq: seq, value: value}
           : keys ? key : seqs ? seq : value
           )
+          if (type !== 'put') ret.type = type
+          return ret
         }
 
         return pull(
@@ -160,13 +162,16 @@ module.exports = function (version, map) {
           values ?
           Paramap(function (data, cb) {
               if(data.sync) return cb(null, data)
+              if (data.value == undefined) return cb(null, format(data.key, undefined, undefined, data.type))
               log.get(data.value, function (err, value) {
                 if(err) cb(explain(err, 'when trying to retrive:'+data.key+'at since:'+log.since.value))
-                else cb(null, format(data.key, data.value, value))
+                else cb(null, format(data.key, data.value, value, data.type))
               })
             })
           : pull.map(function (data) {
-              return format(data.key, data.value, null)
+              if(data.sync) return data
+              console.log('formatting', data)
+              return format(data.key, data.value, null, data.type)
             })
         )
       },
