@@ -71,7 +71,7 @@ module.exports = function (version, map) {
        return writer = Write(function (chunks, cb) {
           if(closed) return cb(new Error('database closed while index was building'))
           var newSince = chunks[0].value.since
-          console.log('Writing chunks:', chunks)
+          //console.log('Writing chunks:', chunks)
           db.batch(chunks, function (err) {
             if(err) return cb(err)
             console.log('done writing chunks, since=', newSince)
@@ -82,7 +82,7 @@ module.exports = function (version, map) {
         }, function reduce (chunks, data) {
           //if(data.sync) return batch
           if(data.since !== undefined) {
-            console.log('review-level got data.since', data.since, 'batch length', batch && batch.length)
+            //console.log('review-level got data.since', data.since, 'batch length', batch && batch.length)
             if (batch) {
               if (data.since > batch[0].value.since) {
                 batch[0].value.since = data.since
