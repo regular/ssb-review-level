@@ -5,6 +5,7 @@
   "version": "3.0.5",
   "dependencies": {
     "charwise": "^3.0.1",
+    "debug": "^4.0.1",
     "deep-equal": "^1.0.1",
     "explain-error": "^1.0.4",
     "level": "^3.0.1",

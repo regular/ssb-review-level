@@ -10,7 +10,9 @@ var Paramap = require('pull-paramap')
 var ltgt = require('ltgt')
 var explain = require('explain-error')
 var mkdirp = require('mkdirp')
+var debug = require('debug')('ssb-review-level')
 var array_diff = require('./array_diff')
+
 
 module.exports = function (version, map) {
   return function (log, name) {
@@ -74,7 +76,7 @@ module.exports = function (version, map) {
           //console.log('Writing chunks:', chunks)
           db.batch(chunks, function (err) {
             if(err) return cb(err)
-            console.log('done writing chunks, since=', newSince)
+            debug('done writing chunks, since=%d', newSince)
             since.set(newSince)
             //callback to anyone waiting for this point.
             cb()
