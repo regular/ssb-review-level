@@ -1,15 +1,16 @@
-
 var Flume = require('flumedb')
 var Log = require('flumelog-offset')
 var Index = require('../')
 var codec = require('flumecodec')
+var u = require('ssb-revisions/test/test-helper')
 
-require('test-ssb-review-index/read')(function (file, seed) {
-  return Flume(Log(file+'/log.offset', 1024, codec.json))
-    .use('index', Index(1, function (e) {
+require('test-ssb-review-index/read')(function (file, seed, cb) {
+  u.createDB(file + 'blah', function(err, db) {
+    db.revisions.use('index', Index(1, function (e) {
       console.log(e)
       return [e.key]
     }))
+    cb(null, db)
+  })
 })
-
 
