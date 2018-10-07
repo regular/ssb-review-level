@@ -123,7 +123,7 @@ module.exports = function (version, map) {
         //wait until the log has been processed up to the current point.
         db.get(key, function (err, seq) {
           if(err && err.name === 'NotFoundError') return cb(err)
-          if(err) cb(explain(err, 'flumeview-level.get: key not found:'+key))
+          if(err) cb(explain(err, 'ssb-review-level.get: key not found:'+key))
           else
             log.get(seq, function (err, value) {
               if(err) cb(explain(err, 'flumeview-level.get: index for:'+key+'pointed at:'+seq+'but log error'))
@@ -149,7 +149,7 @@ module.exports = function (version, map) {
           : seqs && values         ? {seq: seq, value: value}
           : keys ? key : seqs ? seq : value
           )
-          if (type !== 'put') ret.type = type
+          if (type && type !== 'put') ret.type = type
           return ret
         }
 
