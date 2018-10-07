@@ -108,7 +108,7 @@ module.exports = function (version, map) {
             var new_entries = map(data.value, data.value.seq)
             var old_entries = data.old_value ? map(data.old_value, data.old_value.seq) : []
             var diff = array_diff(old_entries, new_entries)
-            batch = batch.concat(diff.put.map(function (key) {
+            batch = batch.concat(new_entries.map(function (key) {
               return { key: key, value: data.value.seq, type: 'put' }
             }))
             batch = batch.concat(diff.del.map(function (key) {
