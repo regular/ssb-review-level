@@ -1,46 +1,80 @@
-# flumeview-level
+# ssb-review-level
 
-A flumeview implemented on top of level.
+A view implemented on top of leveldb, for use with ssb-revisions.
 
 Provides indexes which are persistent and can be streamed in order.
 
+This is more or less a drop-in replacement for flumeview-level, for applications that require mutable documents.
 
-## example
+## Differences to flumeview-level
+
+- In case a message is a revision of a prior message (e.g. it has revisionRoot and revisionBranch properties), your map function is called twice: once for the old value, once for the new value. (your map function typically does not care whether it is called for the old or new value. However, if it does, this information is provided in the third argument: true for new, false for old).
+
+- all entries returned by `map(new_value)` are written to leveldb (same as with flumeview-level)
+- all entries retunred by `map(old_value)` that are _not also included_ in what is retunred by `map(new_value)` are _deleted_ from leveldb.
+- the stream retunred by `read({live:true})` may contain `{type: 'del', key: [..]}` items, if an object/document no longer is part of the query result.
+- the key-value pair argument to `map()` has a thrid property: `meta`. It's an object containing two booleans: `forked` and `incomplete` that indicated problems with the history of the object.
+- if revisions are present, ssb-revisions makes sure that map is called in the correct, causal order.
+
+## Example
 
 ``` js
-var FlumeviewLevel = require('flumeview-level')
+var ReviewLevel = require('ssb-review-level')
 
-flumedb.use(name, FlumeviewLevel(1, function map (value) {
-  return [data.foo] // must return an array
+ssb.revisions.use('my_view', ReviewLevel(1, function map (kv) {
+  return [ [kv.value.content.foo, kv.value.content.revisionRoot || kv.key] ] // array of array-keys
 }))
 
-flumedb.append({foo: 'bar'}, function (err) {
-  if(err) throw err
-
-  //query items from the index directly
-  flumedb[name].get('bar', function (err, value) {
-    if(err) throw err
-    console.log(value) // => {foo: 'bar'})
+ssb.publish({foo: 'bar'}, function (err, msg_A) {
+  ssb.publish({foo: 'baz'}, function (err, msg_B) {
+    ssb.publish({
+      revisionRoot: msg_B.key,
+      revisionBranch: msg_B.key
+      foo: 'bar'
+    }, function (err, msg_C) {
+      // query ranges via pull-streams
+      pull(
+        revisions.my_view.read({gt: ['bar', null], lt: ['bar', undefined], live: true}),
+        ... => {
+          key: ['bar', msg_A.key],
+          value: { 
+            key: msg_A.key,
+            value: { content: { foo: 'bar' } }
+          } 
+        }
+        ... => {
+          key: ['bar', msg_B.key],
+          value: { 
+            key: msg_C.key,
+            value: {
+              content: {
+                foo: 'bar',
+                revisionRoot: msg_B.key,
+                revisionBranch: msg_B.key
+              }
+            }
+          }
+        }
+      )
+    })
   })
-
-  //or query ranges via pull-streams
-  pull(
-    flumedb[name].read({gte: 'bar', live: true}),
-    ...
-  )
-
 })
 ```
+In the example above, msg C is a revision of msg B that causes the original message's key (B) to be included in the query result (because the revised message B now has the foo value that matches the query)
+
+More examples can be found [here](https://github.com/regular/ssb-revisions/blob/master/indexes/warnings.js) and [here](https://github.com/regular/ssb-revisions/blob/master/indexes/generic.js)
+
+The following was adapted from flumeview-level's README.
 
 ## API
 
-### `FlumeviewLevel(version, map) => function`
+### `ReviewLevel(version, map) => function`
 
 #### `version`
 The version of the view. Incrementing this number will cause the view to be re-built
 
 #### `map`
-A function with signature `(value, seq)`, where `value` is the item from the log coming past, and `seq` is the location of that value in the flume log.
+A function with signature `(value, seq, is_new)`, where `value` is the item from the log coming past, and `seq` is the location of that value in the flume log. `is_new` is `true` if the function is called with a new (or the original) value, and `false` if it is called with the old value. In most cases you can ignore all arguments but the first.
 
 This function **must return an Array** that's either empty or contains unique index key(s).
 These index keys can then be queired to retrieve the stored value (see `get` and `read` below).
@@ -54,19 +88,17 @@ Examples of index key(s) you might return:
 This last case is useful when you might want multiple entries under a particular key like `@mix` - if just use `@mix` then the index will get overwritten by future values coming in with the same key.
 Extending the key to include some unique aspect (like a timestamp or the `seq` of the value) means you can have multiple indexes in your view which have a _similar_ key.
 
-e.g. [flumeview-search](https://github.com/flumedb/flumeview-search) is a flumeview which takes the text from incoming values and builds an index which can be searched.
-It takes a sentence like "Learn about leveldb" and maps that into 3 index keys like `['learn', 'about', 'leveldb']`, each of which will point back to the sentence "Learn about leveldb".
-In practice the 3 indexes need to be more unique if we don't want there to be only one index for `learn` - e.g. `[['learn', 145], ['about', 145], ['leveldb', 145]]` will mean we can later add an index `['learn', 2034]` and it will be distinct from `['learn', 145]`.
-Here 145, 2034 are just unique numbers which keep in index unique - using seq or timestamp is common for this.
+In a scenario with mutable documents however, you most likely want an index key like this:
 
+- `['@mix', kv.value.content.revisionRoot || kv.key]` 
+
+This ensures that a) differnt documents don't overwrite each other's index entry, and b) later revisions of the same document *do* overwrite previous index entries. ssb-revisions makes sure that map is called in the correct (causal) order (newest last)
 
 #### `function`
-flumeview-level returns a function which follows the flumeview pattern, enabling it to be installed into a flumedb.
+flumeview-level returns a function which follows the ssb-review pattern, enabling it to be installed into an instance of ssb-revisions.
 
 
 ### `get(key, cb)`
-
-This is a method that gets attached to the flumedb after you install your flumeview (see example above).
 
 The keys for the values in `map` above would be `'@mix'`, `'@mixmix'`, or `['@mix', 1524805117433]`
 
@@ -98,23 +130,23 @@ Example of more advanced query:
 
 ```js
 {
-  gte: ['@mix', 1524720269458],
-  lte: ['@mix' null],
+  gte: ['@mix', null],
+  lte: ['@mix' undefined],
 }
 ```
 
-Assume this is an index where the keys are of the form `[@mentions, timestamp], then this query will get all mentions which are _exactly_ '@mix', and happened more recently than 2018-04-27 5pm NZT (note `null` is the highest value in [bytewise](https://github.com/deanlandolt/bytewise#order-of-supported-structures) comparator)
+Assume this is an index where the keys are of the form `[@mentions, revisionRoot], then this query will get all documents where @mix is mentioned in the latest revision. (note `undefined` is the highest, `null` the lowest value in [bytewise](https://github.com/deanlandolt/bytewise#order-of-supported-structures) comparator)
 
 If you wanted to get all mentions which _started with_ `@m` you could use:
 
 ```js
 {
-  gte: ['@m', undefined],
-  lt: ['@m~', null],
+  gte: ['@m', null],
+  lt: ['@m~', undefined],
 }
 ```
 
-Here `undefined` is the lowest value in the comparator, and the `~` is just a slightly unreliable hack to catch values below `@m~` as `~` is quite a high character (e.g. above Z) for lexicographic ordering (there are higher characters but english people are less likely to type them, check [ltgt](https://github.com/dominictarr/ltgt) to generate reliable limiting values).
+Here `null` is the lowest value in the comparator, and the `~` is just a slightly unreliable hack to catch values below `@m~` as `~` is quite a high character (e.g. above Z) for lexicographic ordering (there are higher characters but english people are less likely to type them, check [ltgt](https://github.com/dominictarr/ltgt) to generate reliable limiting values).
 
 Here's some lexographically ordered strings to help you catch the vibe:
 '@nevernever', '@m', '@manowar', '@ma~', '@mo', '@m~'

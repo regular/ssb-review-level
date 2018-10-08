@@ -105,8 +105,8 @@ module.exports = function (version, map) {
 
           if (data.since == undefined) {
             //map must return an array (like flatmap) with zero or more values
-            var new_entries = map(data.value, data.value.seq)
-            var old_entries = data.old_value ? map(data.old_value, data.old_value.seq) : []
+            var new_entries = map(data.value, data.value.seq, true)
+            var old_entries = data.old_value ? map(data.old_value, data.old_value.seq, false) : []
             var diff = array_diff(old_entries, new_entries)
             batch = batch.concat(new_entries.map(function (key) {
               return { key: key, value: data.value.seq, type: 'put' }
