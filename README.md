@@ -4,7 +4,7 @@ A view implemented on top of leveldb, for use with ssb-revisions.
 
 Provides indexes which are persistent and can be streamed in order.
 
-This is more or less a drop-in replacement for flumeview-level, for applications that require mutable documents.
+This is more or less a drop-in replacement for flumeview-level, for scuttlebutt applications that require mutable documents.
 
 ## Differences to flumeview-level
 
@@ -95,7 +95,7 @@ In a scenario with mutable documents however, you most likely want an index key 
 This ensures that a) differnt documents don't overwrite each other's index entry, and b) later revisions of the same document *do* overwrite previous index entries. ssb-revisions makes sure that map is called in the correct (causal) order (newest last)
 
 #### `function`
-flumeview-level returns a function which follows the ssb-review pattern, enabling it to be installed into an instance of ssb-revisions.
+ssb-review-level returns a function which follows the ssb-review pattern, enabling it to be installed into an instance of ssb-revisions.
 
 
 ### `get(key, cb)`
@@ -135,7 +135,7 @@ Example of more advanced query:
 }
 ```
 
-Assume this is an index where the keys are of the form `[@mentions, revisionRoot], then this query will get all documents where @mix is mentioned in the latest revision. (note `undefined` is the highest, `null` the lowest value in [bytewise](https://github.com/deanlandolt/bytewise#order-of-supported-structures) comparator)
+Assume this is an index where the keys are of the form `[@mentions, revisionRoot]`, then this query will get all documents where @mix is mentioned in the latest revision. (note `undefined` is the highest, `null` the lowest value in [bytewise](https://github.com/deanlandolt/bytewise#order-of-supported-structures) comparator)
 
 If you wanted to get all mentions which _started with_ `@m` you could use:
 
