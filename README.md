@@ -6,6 +6,8 @@ Provides indexes which are persistent and can be streamed in order.
 
 This is more or less a drop-in replacement for flumeview-level, for scuttlebutt applications that require mutable documents.
 
+See also: [ssb-review-reduce](https://github.com/regular/ssb-review-reduce)
+
 ## Differences to flumeview-level
 
 - In case a message is a revision of a prior message (e.g. it has revisionRoot and revisionBranch properties), your map function is called twice: once for the old value, once for the new value. (your map function typically does not care whether it is called for the old or new value. However, if it does, this information is provided in the third argument: true for new, false for old).
