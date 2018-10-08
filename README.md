@@ -1,6 +1,6 @@
 # ssb-review-level
 
-A view implemented on top of leveldb, for use with ssb-revisions.
+A view implemented on top of leveldb, for use with [ssb-revisions](https://github.com/regular/ssb-revisions).
 
 Provides indexes which are persistent and can be streamed in order.
 
