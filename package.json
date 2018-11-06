@@ -1,6 +1,5 @@
 {
   "name": "ssb-review-level",
-  "private": true,
   "description": "flumeview-level, but for ssb-revisions",
   "version": "3.0.5",
   "dependencies": {
@@ -26,6 +25,19 @@
   "scripts": {
     "test": "node test/index.js && node test/bench.js"
   },
-  "author": "'Dominic Tarr' <dominic.tarr@gmail.com> (dominictarr.com)",
-  "license": "MIT"
+  "license": "MIT",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/regular/ssb-review-level.git"
+  },
+  "keywords": ["ssb-revisions", "ssb-review"],
+  "author": "Jan Bölsche <jan@lagomorph.de> (https://regular.codes/)",
+  "bugs": {
+    "url": "https://github.com/regular/ssb-review-level/issues"
+  },
+  "homepage": "https://github.com/regular/ssb-review-level#readme"
 }
