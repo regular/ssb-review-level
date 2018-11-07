@@ -34,7 +34,10 @@
     "type": "git",
     "url": "git+https://github.com/regular/ssb-review-level.git"
   },
-  "keywords": ["ssb-revisions", "ssb-review"],
+  "keywords": [
+    "ssb-revisions",
+    "ssb-review"
+  ],
   "author": "Jan Bölsche <jan@lagomorph.de> (https://regular.codes/)",
   "bugs": {
     "url": "https://github.com/regular/ssb-review-level/issues"
