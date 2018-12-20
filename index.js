@@ -170,7 +170,6 @@ module.exports = function (version, map) {
             })
           : pull.map(function (data) {
               if(data.sync) return data
-              console.log('formatting', data)
               return format(data.key, data.value, null, data.type)
             })
         )
