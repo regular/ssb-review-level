@@ -1,7 +1,7 @@
 {
   "name": "ssb-review-level",
   "description": "flumeview-level, but for ssb-revisions",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "dependencies": {
     "charwise": "^3.0.1",
     "debug": "^4.0.1",
