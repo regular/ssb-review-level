@@ -100,7 +100,8 @@ module.exports = function (version, map) {
             batch = [{
               key: META,
               value: {version: version, since: data.since !== undefined ? data.since : -1},
-              valueEncoding: 'json', keyEncoding:'utf8'
+              valueEncoding: 'json', keyEncoding:'utf8',
+              type: 'put'
             }]
 
           if (data.since == undefined) {
